@@ -1,8 +1,10 @@
 const { select, input, checkbox, number, confirm } = require('@inquirer/prompts');
 const fs = require('fs').promises;
+const chalk = require('chalk').default; 
 
 let desafios = [];
 let sair = false
+let mensagem = chalk.bold.blue("Bem-vindo ao APP de Desafios Pessoais!");
 
 async function salvarDesafios() {
     await fs.writeFile("desafios.json", JSON.stringify(desafios, null, 2));
@@ -12,12 +14,12 @@ async function carregarDesafios() {
     try {
         const dados = await fs.readFile("desafios.json", "utf-8");
         desafios = JSON.parse(dados);
-        console.log(`✅ ${desafios.length} desafios carregados do arquivo.`)
+        mensagem = chalk.green(`✅ ${desafios.length} desafios carregados do arquivo.`);
     } catch (error) {
         if (error.code === 'ENOENT') {
             console.log("Arquivo 'desafios.json' não encontrado. Iniciando um novo.");
         } else {
-            console.error("Erro ao carregar desafios:", error)
+            console.error(chalk.red("❌ Erro ao carregar desafios:", error));
         }
     }
 }
@@ -26,12 +28,12 @@ async function carregarDesafios() {
 async function criarDesafio() {
     const nome = await input({ message: "Nome do desafio: " });
     if (nome.trim() === "") {
-        console.log("❌Nenhum desafio para ser criado")
+        mensagem = "❌ Nenhum desafio para ser criado";
         return;
     }
     const descricao = await input({ message: "Descrição: " });
 
-    const duracao = definirDuracao();
+    const duracao = await definirDuracao();
 
     desafios.push({
         nome,
@@ -40,7 +42,7 @@ async function criarDesafio() {
     })
 
     await salvarDesafios();
-    console.log(`✅ Desafio "${nome}" criado e salvo com sucesso!`)
+    mensagem = (`✅ Desafio "${nome}" criado e salvo com sucesso!`);
 
 }
 
@@ -53,7 +55,7 @@ async function definirDuracao() {
                 name: "30 dias",
                 value: 30
             },
-
+ 
             {
                 name: "60 dias",
                 value: 60
@@ -72,6 +74,50 @@ async function definirDuracao() {
 
 }
 
+async function listarDesafios() {
+    if(desafios.length == 0) {
+        console.clear();
+        mensagem = (chalk.red("❌ Não existem desafios ainda."));
+        return;
+    }
+
+    console.clear();
+    console.log("---------------------------------------------");
+    console.log("             📝Lista de Desafios             ");
+    console.log("---------------------------------------------");
+    
+
+
+
+    desafios.forEach((desafio, index) => {
+        // Exibição formatada
+        console.log(chalk.yellow(`\n${index + 1}. 🎯 ${desafio.nome}`));
+        console.log(chalk.white(`   - Descrição: ${desafio.descricao}`));
+        console.log(`   - Duração: ${chalk.cyan(desafio.duracao + ' dias')}`);
+        
+        // Linha divisória para separar os desafios
+        console.log(chalk.gray("   ================================="));
+    });
+
+    // 4. Adiciona uma pausa interativa para que o usuário possa ler
+    await input({ message: chalk.bold.yellow("\nPressione ENTER para voltar ao menu.") });
+    
+    // 5. Define a mensagem de feedback para o próximo ciclo do menu
+    mensagem = chalk.green(`✅ Lista exibida com sucesso. Total de ${desafios.length} desafios.`);
+
+}
+
+
+
+async function mostrarMensagem() {
+
+    if(mensagem != ""){
+        console.log(mensagem);
+        console.log();
+        mensagem = "";
+    }
+}
+
 
 async function opcoes() {
 
@@ -79,12 +125,17 @@ async function opcoes() {
         message: "Menu >",
         choices: [
             {
-                name: "🎯Criar Desafio",
+                name: "🎯 Criar Desafio",
                 value: "criar"
             },
 
             {
-                name: "👋Sair",
+                name: "📝 Listar Desafios",
+                value: "listar"
+            },
+
+            {
+                name: "🚪 Sair",
                 value: "sair"
             }
         ]
@@ -93,6 +144,9 @@ async function opcoes() {
     switch (opcao) {
         case "criar":
             await criarDesafio();
+            break;
+        case "listar":
+            await listarDesafios();
             break;
         case "sair":
             console.log("👋Até a proxima")
@@ -104,8 +158,11 @@ async function opcoes() {
 
 async function menuIniciar() {
     await carregarDesafios();
+    console.clear();
 
     while (sair === false) {
+        console.clear()
+        mostrarMensagem();
         await opcoes();
     }
 
