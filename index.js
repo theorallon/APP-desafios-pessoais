@@ -81,11 +81,6 @@ async function listarDesafios() {
         return;
     }
 
-    console.clear();
-    console.log("---------------------------------------------");
-    console.log("             📝Lista de Desafios             ");
-    console.log("---------------------------------------------");
-    
 
 
 
@@ -121,6 +116,7 @@ async function mostrarMensagem() {
 
 async function opcoes() {
 
+
     const opcao = await select({
         message: "Menu >",
         choices: [
@@ -143,13 +139,14 @@ async function opcoes() {
 
     switch (opcao) {
         case "criar":
+            console.clear();
             await criarDesafio();
             break;
         case "listar":
             await listarDesafios();
             break;
         case "sair":
-            console.log("👋Até a proxima")
+            console.log("👋 Até a proxima")
             sair = true
             return;
     }
@@ -161,7 +158,7 @@ async function menuIniciar() {
     console.clear();
 
     while (sair === false) {
-        console.clear()
+        console.clear();
         mostrarMensagem();
         await opcoes();
     }
