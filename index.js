@@ -1,6 +1,7 @@
 const { select, input, checkbox, number, confirm } = require('@inquirer/prompts');
 const fs = require('fs').promises;
 const chalk = require('chalk').default; 
+const dayjs = require("dayjs");
 
 let desafios = [];
 let sair = false
@@ -14,7 +15,7 @@ async function carregarDesafios() {
     try {
         const dados = await fs.readFile("desafios.json", "utf-8");
         desafios = JSON.parse(dados);
-        mensagem = chalk.green(`✅ ${desafios.length} desafios carregados do arquivo.`);
+        console.log(chalk.green(`✅ ${desafios.length} desafios carregados do arquivo.`));
     } catch (error) {
         if (error.code === 'ENOENT') {
             console.log("Arquivo 'desafios.json' não encontrado. Iniciando um novo.");
@@ -35,10 +36,15 @@ async function criarDesafio() {
 
     const duracao = await definirDuracao();
 
+    const dataInicio = dayjs().format("DD/MM/YYYY");
+    const dataFim = dayjs().add(duracao, "day").format("DD/MM/YYYY");
+
     desafios.push({
         nome,
         descricao,
-        duracao
+        duracao,
+        dataInicio,
+        dataFim
     })
 
     await salvarDesafios();
@@ -74,6 +80,8 @@ async function definirDuracao() {
 
 }
 
+
+
 async function listarDesafios() {
     if(desafios.length == 0) {
         console.clear();
@@ -89,6 +97,8 @@ async function listarDesafios() {
         console.log(chalk.yellow(`\n${index + 1}. 🎯 ${desafio.nome}`));
         console.log(chalk.white(`   - Descrição: ${desafio.descricao}`));
         console.log(`   - Duração: ${chalk.cyan(desafio.duracao + ' dias')}`);
+        console.log(`   - Data de início: ${chalk.blue(desafio.dataInicio)}`);
+        console.log(`   - Data de término: ${chalk.red(desafio.dataFim)}`);
         
         // Linha divisória para separar os desafios
         console.log(chalk.gray("   ================================="));
