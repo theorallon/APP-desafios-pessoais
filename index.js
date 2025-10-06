@@ -19,10 +19,10 @@ async function calcularStreak(diasConcluidos) {
     let atual = 0;
 
     if (diasConcluidos.length === 0) {
-        return {sequenciaAtual: 0, maiorSequencia: 0};
+        return { sequenciaAtual: 0, maiorSequencia: 0 };
     }
 
-    for(let i = 0; i < diasConcluidos.length; i++) {
+    for (let i = 0; i < diasConcluidos.length; i++) {
         if (i === 0 || diasConcluidos[i] === diasConcluidos[i - 1] + 1) {
             atual++;
         } else {
@@ -40,7 +40,7 @@ async function calcularStreak(diasConcluidos) {
         if (diasConcluidos[i] === ultimoDia - (diasConcluidos.length - 1 - i)) {
             sequenciaAtual++;
         } else {
-            break; 
+            break;
         }
     }
 
@@ -131,10 +131,12 @@ async function verDetalhesDesafio(desafio) {
     console.log(chalk.bold.yellow("Detalhes do desafio\n"));
     console.log(`🎯 Nome: ${chalk.blue(desafio.nome)}`);
     console.log(`📝 Descrição: ${chalk.blue(desafio.descricao)}`);
+    const statusColor = desafio.status === "ativo" ? chalk.green : chalk.yellow;
+    const statusDisplay = desafio.status.toUpperCase();
+    console.log(`✨ Status: ${statusColor(statusDisplay)}`); 
     console.log(`📅 Duração: ${chalk.blue(desafio.duracao)} dias`);
     console.log(`⏳ Data de início: ${chalk.blue(desafio.dataInicio)}`);
     console.log(`⌛ Data de término: ${chalk.blue(desafio.dataFim)}`);
-    console.log(`📆 Progresso: ${chalk.green(desafio.progresso.length)} / ${desafio.duracao} dias concluídos`);
     const porcentagem = ((desafio.progresso.length / desafio.duracao) * 100).toFixed(1);
     console.log(`📆 Progresso: ${chalk.green(desafio.progresso.length)} / ${desafio.duracao} dias (${porcentagem}%)`);
 
@@ -156,38 +158,108 @@ async function excluirDesafio(index) {
     mensagem = chalk.green("✅ Desafio excluído com sucesso!")
 }
 
+async function concluirDesafio(desafio) {
+
+    const confirmacao = await confirm({
+        message: chalk.green(`Marcar o desafio "${desafio.nome}" como concluído?`)
+    });
+
+    if (!confirmacao) {
+        mensagem = `Ação cancelada: Desafio "${desafio.nome}" não foi concluído.`;
+        return;
+    }
+
+    // Altera o status para 'concluido'
+    desafio.status = "concluido";
+    await salvarDesafios();
+
+    mensagem = chalk.green(`✅ Desafio "${desafio.nome}" concluído com sucesso!`);
+
+}
+
+async function reabrirDesafio(desafio) {
+    const confirmacao = await confirm({
+        message: chalk.yellow(`Tem certeza que deseja reabrir o desafio "${desafio.nome}" e colocá-lo como ATIVO novamente?`)
+    });
+
+    if (!confirmacao) {
+        mensagem = `Ação cancelada: Desafio "${desafio.nome}" não foi reaberto.`;
+        return;
+    }
+
+    // Altera o status de volta para 'ativo'
+    desafio.status = "ativo";
+    await salvarDesafios();
+
+    mensagem = chalk.green(`♻️ Desafio "${desafio.nome}" reaberto com sucesso!`);
+}
+
+
+async function verificarStatusAutomatico() {
+    // Cria a data de hoje, ignorando a hora (usando startOf('day')) para comparação justa
+    const hoje = dayjs().startOf('day'); 
+    let statusAlterado = false; 
+    let desafiosEncerrados = [];
+
+    for (const desafio of desafios) {
+        // Só verifica desafios que ainda estão ativos
+        if (desafio.status === "ativo") {
+            // Cria a data de fim do desafio e zera a hora para comparação
+            const dataFim = dayjs(desafio.dataFim, "DD/MM/YYYY").startOf('day');
+
+            // Verifica se a data de hoje é igual à data de fim OU se já passou da data de fim
+            // isSame(data) || isAfter(data) = "É igual ou depois"
+            if (hoje.isSame(dataFim) || hoje.isAfter(dataFim)) {
+                desafio.status = "concluido";
+                statusAlterado = true;
+                desafiosEncerrados.push(desafio.nome);
+            }
+        }
+    }
+    
+    // Salva no JSON e exibe feedback se algo mudou
+    if (statusAlterado) {
+        await salvarDesafios();
+        mensagem = chalk.yellow(`⚠️ ${desafiosEncerrados.length} desafios encerrados automaticamente: ${desafiosEncerrados.join(', ')}.`);
+    }
+}
+
 async function marcarDia(desafio, index) {
-const choices = Array.from({ length: desafio.duracao }).map((_, i) => {
-    const dia = i + 1;
-    const data = dayjs(desafio.dataInicio, "DD/MM/YYYY").add(i, "day").format("DD/MM/YYYY");
-    return {
-      name: `Dia ${dia} — ${data}`,
-      value: dia,
-      checked: Array.isArray(desafio.progresso) && desafio.progresso.includes(dia)
-    };
-  });
+    const choices = Array.from({ length: desafio.duracao }).map((_, i) => {
+        const dia = i + 1;
+        const data = dayjs(desafio.dataInicio, "DD/MM/YYYY").add(i, "day").format("DD/MM/YYYY");
+        return {
+            name: `Dia ${dia} — ${data}`,
+            value: dia,
+            checked: Array.isArray(desafio.progresso) && desafio.progresso.includes(dia)
+        };
+    });
 
-  // Abre o checkbox
-  const selecionados = await checkbox({
-    message: `Marque os dias concluídos para: ${desafio.nome}`,
-    choices
-  });
+    // Abre o checkbox
+    const selecionados = await checkbox({
+        message: `Marque os dias concluídos para: ${desafio.nome}`,
+        choices
+    });
 
-  // Defesa: transformar em array e garantir números
-  const selecionadosArray = Array.isArray(selecionados) ? selecionados.map(n => Number(n)) : [];
+    // Defesa: transformar em array e garantir números
+    const selecionadosArray = Array.isArray(selecionados) ? selecionados.map(n => Number(n)) : [];
 
-  // Ordena e salva no desafio
-  selecionadosArray.sort((a, b) => a - b);
-  desafio.progresso = selecionadosArray;
+    // Ordena e salva no desafio
+    selecionadosArray.sort((a, b) => a - b);
+    desafio.progresso = selecionadosArray;
 
-  await salvarDesafios();
+    const { sequenciaAtual, maiorSequencia } = await calcularStreak(desafio.progresso);
+    desafio.sequenciaAtual = sequenciaAtual;
+    desafio.maiorSequencia = maiorSequencia;
 
-  // Feedback
-  console.clear();
-  console.log(chalk.green(`✅ Progresso atualizado para "${desafio.nome}"`));
-  console.log(chalk.cyan(`${desafio.progresso.length} / ${desafio.duracao} dias concluídos`));
-  // pausa para o usuário ver
-  await input({ message: chalk.bold("Pressione ENTER para voltar.") });
+    await salvarDesafios();
+
+    // Feedback
+    console.clear();
+    console.log(chalk.green(`✅ Progresso atualizado para "${desafio.nome}"`));
+    console.log(chalk.cyan(`${desafio.progresso.length} / ${desafio.duracao} dias concluídos`));
+    // pausa para o usuário ver
+    await input({ message: chalk.bold("Pressione ENTER para voltar.") });
 }
 
 async function menuDesafioSelecionado(desafio, index) {
@@ -199,7 +271,7 @@ async function menuDesafioSelecionado(desafio, index) {
             message: `${chalk.bold.yellow(`Gerenciando: 🎯 ${desafio.nome}"`)}`,
             choices: [
                 {
-                    name: "👁️ Ver detalhes",
+                    name: "👁️  Ver detalhes",
                     value: "ver"
                 },
                 {
@@ -207,9 +279,20 @@ async function menuDesafioSelecionado(desafio, index) {
                     value: "marcarDia"
                 },
                 {
-                    name: "🗑️ Excluir desafio",
+                    name: "🗑️  Excluir desafio",
                     value: "excluir"
                 },
+
+                {
+                    name: "✔️ Marcar como concluído",
+                    value: "concluirDesafio"
+                },
+
+                {
+                    name: "❌ Marcar como ativo",
+                    value: "reabrirDesafio"
+                },
+
                 {
                     name: "🔙 Voltar",
                     value: "voltar"
@@ -223,6 +306,12 @@ async function menuDesafioSelecionado(desafio, index) {
                 break;
             case "marcarDia":
                 await marcarDia(desafio, index);
+                break;
+            case "concluirDesafio":
+                    await concluirDesafio(desafio);
+                    break;
+            case "reabrirDesafio":
+                await reabrirDesafio(desafio);
                 break;
             case "excluir":
                 await excluirDesafio(index);
@@ -262,7 +351,51 @@ async function gerenciarDesafios() {
 }
 
 async function verEstatisticas() {
-    
+    console.clear();
+    console.log(chalk.bold.yellow("📊 Suas Estatísticas"))
+
+    if (desafios.length === 0) {
+        mensagem = chalk.red("❌ Não há nenhum desafio ainda.");
+        return;
+    }
+
+    const totalConcluidos = desafios.reduce((acumulador, desafioAtual) => {
+        return acumulador + desafioAtual.progresso.length;
+    }, 0);
+
+    const totalDiasPossiveis = desafios.reduce((acc, desafio) => {
+        return acc + desafio.duracao;
+    }, 0);
+
+    const taxaSucesoGeral = totalDiasPossiveis > 0
+        ? ((totalConcluidos / totalDiasPossiveis) * 100).toFixed(1)
+        : 0;
+
+
+
+    console.log(`🎯 Total de desafios cadastrados: ${chalk.blue(desafios.length)}`);
+    console.log(`✅ Dias concluídos (Total): ${chalk.green(totalConcluidos)}`);
+    console.log(`📈 Taxa de Sucesso Geral: ${chalk.green(taxaSucesoGeral)}%\n`);
+
+    desafios.forEach((desafio, index) => {
+        const progresso = desafio.progresso.length;
+        const duracao = desafio .duracao;
+        const porcentagem = ((progresso / duracao) * 100).toFixed(1);
+
+        console.log(`\n${chalk.cyan(`${index + 1}. ${desafio.nome}`)}`);
+        console.log(` Progresso: ${chalk.green(progresso)} / ${duracao} dias (${porcentagem}%)`);
+
+        const statusColor = desafio.status === "ativo" ? chalk.green : chalk.yellow;
+        const statusDisplay = desafio.status.toUpperCase();
+        console.log(`✨ Status: ${statusColor(statusDisplay)}`); 
+
+        console.log(`🔥 Sequencia Atual: ${chalk.green(desafio.sequenciaAtual)}`)
+        console.log(`🏆 Maior sequancia: ${chalk.yellow(desafio.maiorSequencia)}`)
+
+    })
+
+
+    await input({ message: chalk.bold("\nPressione ENTER para voltar ao menu.") });
 }
 
 
@@ -313,7 +446,7 @@ async function opcoes() {
         case "gerenciar":
             await gerenciarDesafios();
             break;
-        case "VerEstatisticas":
+        case "verEstatisticas":
             await verEstatisticas();
             break;
         case "sair":
@@ -326,6 +459,7 @@ async function opcoes() {
 
 async function menuIniciar() {
     await carregarDesafios();
+    await verificarStatusAutomatico(); 
     console.clear();
 
     while (sair === false) {
