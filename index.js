@@ -1,7 +1,9 @@
 const { select, input, checkbox, number, confirm } = require('@inquirer/prompts');
 const fs = require('fs').promises;
-const chalk = require('chalk').default; 
+const chalk = require('chalk').default;
 const dayjs = require("dayjs");
+const customParseFormat = require('dayjs/plugin/customParseFormat');
+dayjs.extend(customParseFormat);
 
 let desafios = [];
 let sair = false
@@ -11,10 +13,50 @@ async function salvarDesafios() {
     await fs.writeFile("desafios.json", JSON.stringify(desafios, null, 2));
 }
 
+async function calcularStreak(diasConcluidos) {
+    let sequenciaAtual = 0;
+    let maiorSequencia = 0;
+    let atual = 0;
+
+    if (diasConcluidos.length === 0) {
+        return {sequenciaAtual: 0, maiorSequencia: 0};
+    }
+
+    for(let i = 0; i < diasConcluidos.length; i++) {
+        if (i === 0 || diasConcluidos[i] === diasConcluidos[i - 1] + 1) {
+            atual++;
+        } else {
+            // A sequência quebrou
+            atual = 1;
+        }
+        maiorSequencia = Math.max(maiorSequencia, atual);
+    }
+
+    const ultimoDia = diasConcluidos[diasConcluidos.length - 1];
+
+    sequenciaAtual = 0;
+
+    for (let i = diasConcluidos.length - 1; i >= 0; i--) {
+        if (diasConcluidos[i] === ultimoDia - (diasConcluidos.length - 1 - i)) {
+            sequenciaAtual++;
+        } else {
+            break; 
+        }
+    }
+
+    return { sequenciaAtual, maiorSequencia };
+}
+
 async function carregarDesafios() {
     try {
         const dados = await fs.readFile("desafios.json", "utf-8");
         desafios = JSON.parse(dados);
+
+        desafios = desafios.map(d => ({
+            ...d,
+            progresso: Array.isArray(d.progresso) ? d.progresso : []
+        }));
+
         console.log(chalk.green(`✅ ${desafios.length} desafios carregados do arquivo.`));
     } catch (error) {
         if (error.code === 'ENOENT') {
@@ -44,7 +86,11 @@ async function criarDesafio() {
         descricao,
         duracao,
         dataInicio,
-        dataFim
+        dataFim,
+        progresso: [],
+        status: "ativo",
+        sequenciaAtual: 0,
+        maiorSequencia: 0
     })
 
     await salvarDesafios();
@@ -61,7 +107,7 @@ async function definirDuracao() {
                 name: "30 dias",
                 value: 30
             },
- 
+
             {
                 name: "60 dias",
                 value: 60
@@ -88,11 +134,16 @@ async function verDetalhesDesafio(desafio) {
     console.log(`📅 Duração: ${chalk.blue(desafio.duracao)} dias`);
     console.log(`⏳ Data de início: ${chalk.blue(desafio.dataInicio)}`);
     console.log(`⌛ Data de término: ${chalk.blue(desafio.dataFim)}`);
+    console.log(`📆 Progresso: ${chalk.green(desafio.progresso.length)} / ${desafio.duracao} dias concluídos`);
+    const porcentagem = ((desafio.progresso.length / desafio.duracao) * 100).toFixed(1);
+    console.log(`📆 Progresso: ${chalk.green(desafio.progresso.length)} / ${desafio.duracao} dias (${porcentagem}%)`);
+
+
 
     await input({ message: chalk.bold("Pressione ENTER para voltar.") });
 }
 
-async function excluirDesafio() {
+async function excluirDesafio(index) {
     const confirmacao = await confirm({
         message: chalk.red("Tem certeza que deseja escluir esse item?")
     });
@@ -105,40 +156,80 @@ async function excluirDesafio() {
     mensagem = chalk.green("✅ Desafio excluído com sucesso!")
 }
 
-async function menuDesafioSelecionado(desafio, index) {
-    const opcaoDesafios = await select ({
-        message: `${chalk.bold.yellow(`Gerenciando: 🎯 ${desafio.nome}"`)}`,
-        choices: [
-        {
-        name: "👁️ Ver detalhes",
-        value: "ver"
-        },
-        {
-            name: "📝 Marcar dia como concluído",
-            value: "marcarDia"
-        },
-        {
-            name: "🗑️ Excluir desafio",
-            value: "excluir"
-        },
-        {
-            name: "🔙 Voltar",
-            value: "voltar"
-        }
-    ]
-});
+async function marcarDia(desafio, index) {
+const choices = Array.from({ length: desafio.duracao }).map((_, i) => {
+    const dia = i + 1;
+    const data = dayjs(desafio.dataInicio, "DD/MM/YYYY").add(i, "day").format("DD/MM/YYYY");
+    return {
+      name: `Dia ${dia} — ${data}`,
+      value: dia,
+      checked: Array.isArray(desafio.progresso) && desafio.progresso.includes(dia)
+    };
+  });
 
-    switch (opcaoDesafios){
-        case "ver":
-            await verDetalhesDesafio(desafio);
-            break;
-        case "marcarDia":
-            break;
-        case "excluir":
-            await escolherDesafios(index);
-            break;
-        case "voltar":
-            return;
+  // Abre o checkbox
+  const selecionados = await checkbox({
+    message: `Marque os dias concluídos para: ${desafio.nome}`,
+    choices
+  });
+
+  // Defesa: transformar em array e garantir números
+  const selecionadosArray = Array.isArray(selecionados) ? selecionados.map(n => Number(n)) : [];
+
+  // Ordena e salva no desafio
+  selecionadosArray.sort((a, b) => a - b);
+  desafio.progresso = selecionadosArray;
+
+  await salvarDesafios();
+
+  // Feedback
+  console.clear();
+  console.log(chalk.green(`✅ Progresso atualizado para "${desafio.nome}"`));
+  console.log(chalk.cyan(`${desafio.progresso.length} / ${desafio.duracao} dias concluídos`));
+  // pausa para o usuário ver
+  await input({ message: chalk.bold("Pressione ENTER para voltar.") });
+}
+
+async function menuDesafioSelecionado(desafio, index) {
+    while (true) {
+
+        console.clear();
+
+        const opcaoDesafios = await select({
+            message: `${chalk.bold.yellow(`Gerenciando: 🎯 ${desafio.nome}"`)}`,
+            choices: [
+                {
+                    name: "👁️ Ver detalhes",
+                    value: "ver"
+                },
+                {
+                    name: "📝 Marcar dia como concluído",
+                    value: "marcarDia"
+                },
+                {
+                    name: "🗑️ Excluir desafio",
+                    value: "excluir"
+                },
+                {
+                    name: "🔙 Voltar",
+                    value: "voltar"
+                }
+            ]
+        });
+
+        switch (opcaoDesafios) {
+            case "ver":
+                await verDetalhesDesafio(desafio);
+                break;
+            case "marcarDia":
+                await marcarDia(desafio, index);
+                break;
+            case "excluir":
+                await excluirDesafio(index);
+                return;
+            case "voltar":
+                return;
+        }
     }
 
 }
@@ -146,7 +237,7 @@ async function menuDesafioSelecionado(desafio, index) {
 
 
 async function gerenciarDesafios() {
-    if(desafios.length == 0) {
+    if (desafios.length == 0) {
         console.clear();
         mensagem = (chalk.red("❌ Não existem desafios ainda."));
         return;
@@ -157,24 +248,28 @@ async function gerenciarDesafios() {
         value: index
     }));
 
-    opcoesDesafios.push({name: "🔙 Voltar", value: "voltar"});
+    opcoesDesafios.push({ name: "🔙 Voltar", value: "voltar" });
 
     const escolherDesafios = await select({
         message: "Selecione um desafio para gerenciar:",
         choices: opcoesDesafios
     });
-    
+
     if (escolherDesafios === "voltar") return;
 
     await menuDesafioSelecionado(desafios[escolherDesafios], escolherDesafios)
 
 }
 
+async function verEstatisticas() {
+    
+}
+
 
 
 async function mostrarMensagem() {
 
-    if(mensagem != ""){
+    if (mensagem != "") {
         console.log(mensagem);
         console.log();
         mensagem = "";
@@ -199,6 +294,11 @@ async function opcoes() {
             },
 
             {
+                name: "📊 Ver estatísticas",
+                value: "verEstatisticas"
+            },
+
+            {
                 name: "🚪 Sair",
                 value: "sair"
             }
@@ -212,6 +312,9 @@ async function opcoes() {
             break;
         case "gerenciar":
             await gerenciarDesafios();
+            break;
+        case "VerEstatisticas":
+            await verEstatisticas();
             break;
         case "sair":
             console.log("👋 Até a proxima")
