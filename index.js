@@ -133,7 +133,7 @@ async function verDetalhesDesafio(desafio) {
     console.log(`📝 Descrição: ${chalk.blue(desafio.descricao)}`);
     const statusColor = desafio.status === "ativo" ? chalk.green : chalk.yellow;
     const statusDisplay = desafio.status.toUpperCase();
-    console.log(`✨ Status: ${statusColor(statusDisplay)}`); 
+    console.log(`✨ Status: ${statusColor(statusDisplay)}`);
     console.log(`📅 Duração: ${chalk.blue(desafio.duracao)} dias`);
     console.log(`⏳ Data de início: ${chalk.blue(desafio.dataInicio)}`);
     console.log(`⌛ Data de término: ${chalk.blue(desafio.dataFim)}`);
@@ -197,8 +197,8 @@ async function reabrirDesafio(desafio) {
 
 async function verificarStatusAutomatico() {
     // Cria a data de hoje, ignorando a hora (usando startOf('day')) para comparação justa
-    const hoje = dayjs().startOf('day'); 
-    let statusAlterado = false; 
+    const hoje = dayjs().startOf('day');
+    let statusAlterado = false;
     let desafiosEncerrados = [];
 
     for (const desafio of desafios) {
@@ -216,7 +216,7 @@ async function verificarStatusAutomatico() {
             }
         }
     }
-    
+
     // Salva no JSON e exibe feedback se algo mudou
     if (statusAlterado) {
         await salvarDesafios();
@@ -308,8 +308,8 @@ async function menuDesafioSelecionado(desafio, index) {
                 await marcarDia(desafio, index);
                 break;
             case "concluirDesafio":
-                    await concluirDesafio(desafio);
-                    break;
+                await concluirDesafio(desafio);
+                break;
             case "reabrirDesafio":
                 await reabrirDesafio(desafio);
                 break;
@@ -379,7 +379,7 @@ async function verEstatisticas() {
 
     desafios.forEach((desafio, index) => {
         const progresso = desafio.progresso.length;
-        const duracao = desafio .duracao;
+        const duracao = desafio.duracao;
         const porcentagem = ((progresso / duracao) * 100).toFixed(1);
 
         console.log(`\n${chalk.cyan(`${index + 1}. ${desafio.nome}`)}`);
@@ -387,7 +387,7 @@ async function verEstatisticas() {
 
         const statusColor = desafio.status === "ativo" ? chalk.green : chalk.yellow;
         const statusDisplay = desafio.status.toUpperCase();
-        console.log(`✨ Status: ${statusColor(statusDisplay)}`); 
+        console.log(`✨ Status: ${statusColor(statusDisplay)}`);
 
         console.log(`🔥 Sequencia Atual: ${chalk.green(desafio.sequenciaAtual)}`)
         console.log(`🏆 Maior sequancia: ${chalk.yellow(desafio.maiorSequencia)}`)
@@ -404,24 +404,24 @@ async function filtrarDesafios() {
         choices: [
             { name: "✨ Ativos", value: "ativo" },
             { name: "🏆 Concluídos", value: "concluido" },
-            { name: "👀 Todos", value: "todos" } 
+            { name: "👀 Todos", value: "todos" }
         ]
     });
 
     // 2. Aplicação do Filtro
     let desafiosFiltrados = [];
-    
+
     if (filtroStatus === "todos") {
         // Se "todos", usamos a lista completa.
         desafiosFiltrados = desafios;
     } else {
         // Se um status específico, usamos .filter()
-        desafiosFiltrados = desafios.filter(desafio => 
+        desafiosFiltrados = desafios.filter(desafio =>
             // Condição: o status do desafio deve ser igual ao status selecionado
             desafio.status === filtroStatus
         );
     }
-    
+
     // Se a lista filtrada estiver vazia
     if (desafiosFiltrados.length === 0) {
         mensagem = chalk.yellow(`⚠️ Não há desafios com o status "${filtroStatus.toUpperCase()}" para gerenciar.`);
@@ -519,7 +519,7 @@ async function opcoes() {
 
 async function menuIniciar() {
     await carregarDesafios();
-    await verificarStatusAutomatico(); 
+    await verificarStatusAutomatico();
     console.clear();
 
     while (sair === false) {
