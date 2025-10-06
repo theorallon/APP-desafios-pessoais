@@ -80,35 +80,93 @@ async function definirDuracao() {
 
 }
 
+async function verDetalhesDesafio(desafio) {
+    console.clear();
+    console.log(chalk.bold.yellow("Detalhes do desafio\n"));
+    console.log(`🎯 Nome: ${chalk.blue(desafio.nome)}`);
+    console.log(`📝 Descrição: ${chalk.blue(desafio.descricao)}`);
+    console.log(`📅 Duração: ${chalk.blue(desafio.duracao)} dias`);
+    console.log(`⏳ Data de início: ${chalk.blue(desafio.dataInicio)}`);
+    console.log(`⌛ Data de término: ${chalk.blue(desafio.dataFim)}`);
+
+    await input({ message: chalk.bold("Pressione ENTER para voltar.") });
+}
+
+async function excluirDesafio() {
+    const confirmacao = await confirm({
+        message: chalk.red("Tem certeza que deseja escluir esse item?")
+    });
+
+    if (!confirmacao) return;
+
+    desafios.splice(index, 1);
+    await salvarDesafios();
+
+    mensagem = chalk.green("✅ Desafio excluído com sucesso!")
+}
+
+async function menuDesafioSelecionado(desafio, index) {
+    const opcaoDesafios = await select ({
+        message: `${chalk.bold.yellow(`Gerenciando: 🎯 ${desafio.nome}"`)}`,
+        choices: [
+        {
+        name: "👁️ Ver detalhes",
+        value: "ver"
+        },
+        {
+            name: "📝 Marcar dia como concluído",
+            value: "marcarDia"
+        },
+        {
+            name: "🗑️ Excluir desafio",
+            value: "excluir"
+        },
+        {
+            name: "🔙 Voltar",
+            value: "voltar"
+        }
+    ]
+});
+
+    switch (opcaoDesafios){
+        case "ver":
+            await verDetalhesDesafio(desafio);
+            break;
+        case "marcarDia":
+            break;
+        case "excluir":
+            await escolherDesafios(index);
+            break;
+        case "voltar":
+            return;
+    }
+
+}
 
 
-async function listarDesafios() {
+
+async function gerenciarDesafios() {
     if(desafios.length == 0) {
         console.clear();
         mensagem = (chalk.red("❌ Não existem desafios ainda."));
         return;
     }
 
+    const opcoesDesafios = desafios.map((desafio, index) => ({
+        name: `${index + 1}. ${desafio.nome}`,
+        value: index
+    }));
 
+    opcoesDesafios.push({name: "🔙 Voltar", value: "voltar"});
 
-
-    desafios.forEach((desafio, index) => {
-        // Exibição formatada
-        console.log(chalk.yellow(`\n${index + 1}. 🎯 ${desafio.nome}`));
-        console.log(chalk.white(`   - Descrição: ${desafio.descricao}`));
-        console.log(`   - Duração: ${chalk.cyan(desafio.duracao + ' dias')}`);
-        console.log(`   - Data de início: ${chalk.blue(desafio.dataInicio)}`);
-        console.log(`   - Data de término: ${chalk.red(desafio.dataFim)}`);
-        
-        // Linha divisória para separar os desafios
-        console.log(chalk.gray("   ================================="));
+    const escolherDesafios = await select({
+        message: "Selecione um desafio para gerenciar:",
+        choices: opcoesDesafios
     });
-
-    // 4. Adiciona uma pausa interativa para que o usuário possa ler
-    await input({ message: chalk.bold.yellow("\nPressione ENTER para voltar ao menu.") });
     
-    // 5. Define a mensagem de feedback para o próximo ciclo do menu
-    mensagem = chalk.green(`✅ Lista exibida com sucesso. Total de ${desafios.length} desafios.`);
+    if (escolherDesafios === "voltar") return;
+
+    await menuDesafioSelecionado(desafios[escolherDesafios], escolherDesafios)
 
 }
 
@@ -136,8 +194,8 @@ async function opcoes() {
             },
 
             {
-                name: "📝 Listar Desafios",
-                value: "listar"
+                name: "📂 Gerenciar Desafios",
+                value: "gerenciar"
             },
 
             {
@@ -152,12 +210,12 @@ async function opcoes() {
             console.clear();
             await criarDesafio();
             break;
-        case "listar":
-            await listarDesafios();
+        case "gerenciar":
+            await gerenciarDesafios();
             break;
         case "sair":
             console.log("👋 Até a proxima")
-            sair = true
+            sair = true;
             return;
     }
 }
