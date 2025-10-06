@@ -398,6 +398,58 @@ async function verEstatisticas() {
     await input({ message: chalk.bold("\nPressione ENTER para voltar ao menu.") });
 }
 
+async function filtrarDesafios() {
+    const filtroStatus = await select({
+        message: "Qual status de desafio deseja visualizar?",
+        choices: [
+            { name: "✨ Ativos", value: "ativo" },
+            { name: "🏆 Concluídos", value: "concluido" },
+            { name: "👀 Todos", value: "todos" } 
+        ]
+    });
+
+    // 2. Aplicação do Filtro
+    let desafiosFiltrados = [];
+    
+    if (filtroStatus === "todos") {
+        // Se "todos", usamos a lista completa.
+        desafiosFiltrados = desafios;
+    } else {
+        // Se um status específico, usamos .filter()
+        desafiosFiltrados = desafios.filter(desafio => 
+            // Condição: o status do desafio deve ser igual ao status selecionado
+            desafio.status === filtroStatus
+        );
+    }
+    
+    // Se a lista filtrada estiver vazia
+    if (desafiosFiltrados.length === 0) {
+        mensagem = chalk.yellow(`⚠️ Não há desafios com o status "${filtroStatus.toUpperCase()}" para gerenciar.`);
+        return;
+    }
+
+    const opcoesDesafios = desafiosFiltrados.map((desafio, index) => ({
+        // Adiciona um ícone de status para melhor visualização na lista
+        name: `${desafio.status === 'ativo' ? '✨' : '🏆'} ${desafio.nome}`,
+        value: desafio // Passamos o objeto completo como valor
+    }));
+
+    opcoesDesafios.push({ name: "🔙 Voltar", value: "voltar" });
+
+    const escolherDesafio = await select({
+        message: `Selecione um desafio ${filtroStatus.toUpperCase()} para gerenciar:`,
+        choices: opcoesDesafios
+    });
+
+    if (escolherDesafio === "voltar") return;
+
+    // 4. Gerenciar o Desafio Selecionado
+    // O 'escolherDesafio' é agora o objeto desafio. 
+    // Precisamos encontrar seu índice na lista original 'desafios' para exclusão/alteração
+    const indexDesafioOriginal = desafios.indexOf(escolherDesafio);
+
+    await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
+}
 
 
 async function mostrarMensagem() {
@@ -427,8 +479,13 @@ async function opcoes() {
             },
 
             {
-                name: "📊 Ver estatísticas",
+                name: "📊 Ver Estatísticas",
                 value: "verEstatisticas"
+            },
+
+            {
+                name: "🔍 Filtar Desafios",
+                value: "filtrar"
             },
 
             {
@@ -448,6 +505,9 @@ async function opcoes() {
             break;
         case "verEstatisticas":
             await verEstatisticas();
+            break;
+        case "filtrar":
+            await filtrarDesafios();
             break;
         case "sair":
             console.log("👋 Até a proxima")
