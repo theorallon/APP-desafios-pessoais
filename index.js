@@ -1,4 +1,4 @@
-const { select, input, checkbox, number, confirm } = require('@inquirer/prompts');
+const { select, input, checkbox, confirm } = require('@inquirer/prompts');
 const fs = require('fs').promises;
 const chalk = require('chalk').default;
 const dayjs = require("dayjs");
@@ -74,6 +74,7 @@ async function criarDesafio() {
         mensagem = "❌ Nenhum desafio para ser criado";
         return;
     }
+
     const descricao = await input({ message: "Descrição: " });
 
     const duracao = await definirDuracao();
