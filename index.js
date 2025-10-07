@@ -451,6 +451,18 @@ async function filtrarDesafios() {
     await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
 }
 
+async function info(params) {
+    console.clear();
+    console.log(chalk.bold.yellow("ℹ️ Sobre o App de Desafios Pessoais\n"));
+    console.log("Bem-vindo(a)! Este app é o seu sistema pessoal para criar e acompanhar desafios de longo prazo, como os modelos de 30, 60 ou 90 dias.");
+    console.log("\n**Funcionalidades Principais:**");
+    console.log(`* 🎯 Gerenciamento completo de desafios (criação, edição e exclusão).`);
+    console.log(`* 📝 Registro de progresso diário e visualização de sequência (Streak).`);
+    console.log(`* 📊 Estatísticas avançadas de sucesso e progresso.`);
+    console.log(`\nTecnologias: Desenvolvido com **Node.js** e utilizando **@inquirer/prompts** para interação e **JSON** para persistência de dados.`);
+    await input({ message: chalk.bold("\nPressione ENTER para voltar ao menu.") });
+}
+
 
 async function mostrarMensagem() {
 
@@ -489,6 +501,11 @@ async function opcoes() {
             },
 
             {
+                name: "ℹ️ Sobre o App",
+                value: "info"
+            },
+
+            {
                 name: "🚪 Sair",
                 value: "sair"
             }
@@ -508,6 +525,9 @@ async function opcoes() {
             break;
         case "filtrar":
             await filtrarDesafios();
+            break;
+        case "info":
+            await info();
             break;
         case "sair":
             console.log("👋 Até a proxima")
