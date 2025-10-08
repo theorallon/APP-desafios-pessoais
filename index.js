@@ -187,6 +187,7 @@ async function reabrirDesafio(desafio) {
         return;
     }
 
+    // Altera o status de volta para 'ativo'
     desafio.status = "ativo";
     await salvarDesafios();
 
@@ -241,7 +242,7 @@ async function marcarDia(desafio, index) {
 
     const selecionadosArray = Array.isArray(selecionados) ? selecionados.map(n => Number(n)) : [];
 
-    
+    // Ordena e salva no desafio
     selecionadosArray.sort((a, b) => a - b);
     desafio.progresso = selecionadosArray;
 
@@ -414,7 +415,7 @@ async function pesquisarDesafios() {
         return;
     }
 
-    
+    // Filtra desafios que contêm o termo de pesquisa no nome
     const resultados = desafios.filter(d => 
         d.nome.toLowerCase().includes(termoLowerCase)
     );
@@ -441,15 +442,17 @@ async function pesquisarDesafios() {
 
     if (escolherDesafio === "voltar") return;
 
+    // Encontra o índice original do desafio para gerenciar
     const indexDesafioOriginal = desafios.indexOf(escolherDesafio);
 
     await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
 }
 
 async function filtrarDesafios() {
-    while (true) {
+    while (true) { // Loop principal para manter o usuário no menu de filtros
         console.clear();
         
+        // Exibe a mensagem de feedback (e.g., após a função pesquisarDesafios)
         mostrarMensagem(); 
 
         const filtroOpcao = await select({
@@ -472,41 +475,47 @@ async function filtrarDesafios() {
                     value: "pesquisar"
                 },
                 {
-                    name: "🔙 Voltar ao Menu Principal",
+                    name: "🔙 Voltar ao Menu Principal", // Botão de retorno
                     value: "voltar"
                 }
             ]
         });
 
         if (filtroOpcao === "voltar") {
-            return;
+            return; // Sai da função e volta ao menu principal
         }
 
+        // 1. CHAMA A FUNÇÃO DE PESQUISA POR NOME
         if (filtroOpcao === "pesquisar") {
             await pesquisarDesafios(); 
-            continue;
+            continue; // Recomeça o loop, mostrando o menu de filtros novamente
         }
+
+        // 2. LÓGICA DE FILTRAGEM POR STATUS (Para 'ativo', 'concluido' ou 'todos')
 
         let desafiosFiltrados = [];
 
         if (filtroOpcao === "todos") {
             desafiosFiltrados = desafios;
         } else {
+            // Usa o valor do select (ativo ou concluido) como status
             desafiosFiltrados = desafios.filter(desafio =>
                 desafio.status === filtroOpcao
             );
         }
         
+        // Determina o texto do status para exibição
         const statusDisplay = (filtroOpcao === "todos" ? "TODOS" : filtroOpcao.toUpperCase());
 
+        // Se a lista filtrada estiver vazia
         if (desafiosFiltrados.length === 0) {
             mensagem = chalk.yellow(`⚠️ Não há desafios com o status "${statusDisplay}" para gerenciar.`);
-            continue;
+            continue; // Recomeça o loop
         }
 
         const opcoesDesafios = desafiosFiltrados.map((desafio) => ({
             name: `${desafio.status === 'ativo' ? '✨' : '🏆'} ${desafio.nome}`,
-            value: desafio
+            value: desafio // Passamos o objeto completo como valor
         }));
 
         opcoesDesafios.push({ name: "🔙 Voltar ao Menu de Filtros", value: "voltar" });
@@ -516,11 +525,13 @@ async function filtrarDesafios() {
             choices: opcoesDesafios
         });
 
-        if (escolherDesafio === "voltar") continue;
+        if (escolherDesafio === "voltar") continue; // Recomeça o loop
 
+        // Gerenciar o Desafio Selecionado
         const indexDesafioOriginal = desafios.indexOf(escolherDesafio);
 
         await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
+        // Quando menuDesafioSelecionado retorna, o loop continua e o menu de filtros é exibido novamente.
     }
 }
 
