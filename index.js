@@ -187,7 +187,6 @@ async function reabrirDesafio(desafio) {
         return;
     }
 
-    // Altera o status de volta para 'ativo'
     desafio.status = "ativo";
     await salvarDesafios();
 
@@ -242,7 +241,7 @@ async function marcarDia(desafio, index) {
 
     const selecionadosArray = Array.isArray(selecionados) ? selecionados.map(n => Number(n)) : [];
 
-    // Ordena e salva no desafio
+    
     selecionadosArray.sort((a, b) => a - b);
     desafio.progresso = selecionadosArray;
 
@@ -448,78 +447,81 @@ async function pesquisarDesafios() {
 }
 
 async function filtrarDesafios() {
-  // A variável deve ser consistente, vamos chamar de 'filtroOpcao'
-  const filtroOpcao = await select({
-      message: "Qual status de desafio deseja visualizar?",
-      choices: [
-          { 
-              name: "✨ Ativos",
-              value: "ativo" 
-          },
+    while (true) {
+        console.clear();
+        
+        mostrarMensagem(); 
 
-          { 
-              name: "🏆 Concluídos",
-              value: "concluido" 
-          },
+        const filtroOpcao = await select({
+            message: "Qual status de desafio deseja visualizar?",
+            choices: [
+                { 
+                    name: "✨ Ativos",
+                    value: "ativo" 
+                },
+                { 
+                    name: "🏆 Concluídos",
+                    value: "concluido" 
+                },
+                { 
+                    name: "👀 Todos",
+                    value: "todos" 
+                },
+                { 
+                    name: "🔍 Pesquisar por Nome",
+                    value: "pesquisar"
+                },
+                {
+                    name: "🔙 Voltar ao Menu Principal",
+                    value: "voltar"
+                }
+            ]
+        });
 
-          { 
-              name: "👀 Todos",
-              value: "todos" 
-          },
+        if (filtroOpcao === "voltar") {
+            return;
+        }
 
-          { 
-              name: "🔍 Pesquisar por Nome", // Nome mais descritivo
-              value: "pesquisar"
-          }
-      ]
-  });
+        if (filtroOpcao === "pesquisar") {
+            await pesquisarDesafios(); 
+            continue;
+        }
 
-  // 1. CHAMA A FUNÇÃO DE PESQUISA POR NOME
-  if (filtroOpcao === "pesquisar") {
-      await pesquisarDesafios(); 
-      return; 
-  }
+        let desafiosFiltrados = [];
 
-  // 2. LÓGICA DE FILTRAGEM POR STATUS (Para 'ativo', 'concluido' ou 'todos')
+        if (filtroOpcao === "todos") {
+            desafiosFiltrados = desafios;
+        } else {
+            desafiosFiltrados = desafios.filter(desafio =>
+                desafio.status === filtroOpcao
+            );
+        }
+        
+        const statusDisplay = (filtroOpcao === "todos" ? "TODOS" : filtroOpcao.toUpperCase());
 
-  let desafiosFiltrados = [];
+        if (desafiosFiltrados.length === 0) {
+            mensagem = chalk.yellow(`⚠️ Não há desafios com o status "${statusDisplay}" para gerenciar.`);
+            continue;
+        }
 
-  if (filtroOpcao === "todos") {
-      desafiosFiltrados = desafios;
-  } else {
-      // Usa o valor do select (ativo ou concluido) como status
-      desafiosFiltrados = desafios.filter(desafio =>
-          desafio.status === filtroOpcao
-      );
-  }
-  
-  // Determina o texto do status para exibição
-  const statusDisplay = (filtroOpcao === "todos" ? "TODOS" : filtroOpcao.toUpperCase());
+        const opcoesDesafios = desafiosFiltrados.map((desafio) => ({
+            name: `${desafio.status === 'ativo' ? '✨' : '🏆'} ${desafio.nome}`,
+            value: desafio
+        }));
 
-  // Se a lista filtrada estiver vazia
-  if (desafiosFiltrados.length === 0) {
-      mensagem = chalk.yellow(`⚠️ Não há desafios com o status "${statusDisplay}" para gerenciar.`);
-      return;
-  }
+        opcoesDesafios.push({ name: "🔙 Voltar ao Menu de Filtros", value: "voltar" });
 
-  const opcoesDesafios = desafiosFiltrados.map((desafio) => ({
-      name: `${desafio.status === 'ativo' ? '✨' : '🏆'} ${desafio.nome}`,
-      value: desafio // Passamos o objeto completo como valor
-  }));
+        const escolherDesafio = await select({
+            message: `Selecione um desafio ${statusDisplay} para gerenciar:`,
+            choices: opcoesDesafios
+        });
 
-  opcoesDesafios.push({ name: "🔙 Voltar", value: "voltar" });
+        if (escolherDesafio === "voltar") continue;
 
-  const escolherDesafio = await select({
-      message: `Selecione um desafio ${statusDisplay} para gerenciar:`,
-      choices: opcoesDesafios
-  });
+        const indexDesafioOriginal = desafios.indexOf(escolherDesafio);
 
-  if (escolherDesafio === "voltar") return;
-
-  // Gerenciar o Desafio Selecionado
-  const indexDesafioOriginal = desafios.indexOf(escolherDesafio);
-
-  await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
+        await menuDesafioSelecionado(escolherDesafio, indexDesafioOriginal);
+    }
 }
 
 async function info(params) {
