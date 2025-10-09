@@ -1,16 +1,20 @@
 const { select, input, checkbox, confirm } = require('@inquirer/prompts');
-const fs = require('fs').promises;
+const fsp = require('fs').promises; // Renomeado para fsp
+const fs = require('fs'); // Adicionado para streams (necessário para PDF)
 const chalk = require('chalk').default;
 const dayjs = require("dayjs");
 const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
+
+// Novo import
+const PDFDocument = require('pdfkit');
 
 let desafios = [];
 let sair = false
 let mensagem = chalk.bold.blue("Bem-vindo ao APP de Desafios Pessoais!");
 
 async function salvarDesafios() {
-    await fs.writeFile("desafios.json", JSON.stringify(desafios, null, 2));
+    await fsp.writeFile("desafios.json", JSON.stringify(desafios, null, 2));
 }
 
 async function calcularStreak(diasConcluidos) {
@@ -48,7 +52,7 @@ async function calcularStreak(diasConcluidos) {
 
 async function carregarDesafios() {
     try {
-        const dados = await fs.readFile("desafios.json", "utf-8");
+        const dados = await fsp.readFile("desafios.json", "utf-8");
         desafios = JSON.parse(dados);
 
         desafios = desafios.map(d => ({
@@ -65,6 +69,51 @@ async function carregarDesafios() {
         }
     }
 }
+
+// ----------------------------------------------------
+// NOVO CÓDIGO: FUNÇÃO DE EXPORTAÇÃO PARA PDF
+// ----------------------------------------------------
+
+async function exportarParaPDF() {
+    if (desafios.length === 0) {
+        mensagem = chalk.yellow("⚠️ Não há desafios para exportar.");
+        return;
+    }
+
+    const doc = new PDFDocument();
+    const nomeArquivo = 'desafios_exportados.pdf';
+    
+    // Configura o stream de saída para o arquivo
+    doc.pipe(fs.createWriteStream(nomeArquivo));
+
+    doc.fontSize(20).text('Relatório de Desafios Pessoais', { align: 'center' });
+    doc.fontSize(12).text(`Gerado em: ${dayjs().format('DD/MM/YYYY HH:mm:ss')}`).moveDown(2);
+    
+    desafios.forEach((desafio, index) => {
+        const progresso = desafio.progresso.length;
+        const porcentagem = ((progresso / desafio.duracao) * 100).toFixed(1);
+
+        doc.fontSize(16).fillColor('blue').text(`🎯 Desafio ${index + 1}: ${desafio.nome}`);
+        doc.fillColor('black').fontSize(10);
+        
+        doc.text(`Status: ${desafio.status.toUpperCase()}`);
+        doc.text(`Descrição: ${desafio.descricao}`);
+        doc.text(`Duração: ${desafio.duracao} dias (Início: ${desafio.dataInicio} | Fim: ${desafio.dataFim})`);
+        doc.text(`Progresso: ${progresso} / ${desafio.duracao} dias (${porcentagem}%)`);
+        doc.text(`🔥 Sequência Atual: ${desafio.sequenciaAtual} dias | 🏆 Maior Sequência: ${desafio.maiorSequencia} dias`);
+        
+        // Adiciona uma linha para separação
+        doc.moveDown(0.5).rect(doc.x, doc.y, 500, 0.5).fill('gray').moveDown(1.5);
+    });
+
+    doc.end();
+
+    mensagem = chalk.green(`✅ Desafios exportados com sucesso para o arquivo: ${nomeArquivo}`);
+}
+
+// ----------------------------------------------------
+// FIM DO NOVO CÓDIGO
+// ----------------------------------------------------
 
 
 async function criarDesafio() {
@@ -583,6 +632,11 @@ async function opcoes() {
                 name: "🔍 Filtar Desafios",
                 value: "filtrar"
             },
+            
+            { // NOVO BOTÃO DE EXPORTAÇÃO
+                name: "📄 Exportar para PDF",
+                value: "exportar"
+            },
 
             {
                 name: "ℹ️ Sobre o App",
@@ -609,6 +663,9 @@ async function opcoes() {
             break;
         case "filtrar":
             await filtrarDesafios();
+            break;
+        case "exportar": // NOVO CASE
+            await exportarParaPDF();
             break;
         case "info":
             await info();
