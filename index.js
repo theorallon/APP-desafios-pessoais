@@ -70,9 +70,6 @@ async function carregarDesafios() {
     }
 }
 
-// ----------------------------------------------------
-// NOVO CÓDIGO: FUNÇÃO DE EXPORTAÇÃO PARA PDF
-// ----------------------------------------------------
 
 async function exportarParaPDF() {
     if (desafios.length === 0) {
